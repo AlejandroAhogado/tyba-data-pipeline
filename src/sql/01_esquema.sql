@@ -23,3 +23,28 @@ CREATE TABLE IF NOT EXISTS raw_movimientos (
     commercial_name  VARCHAR,
     PRIMARY KEY (corte_id, fila)
 );
+
+
+-- Capa silver, datos limpios y normalizados, con alertas de calidad por fila.
+-- (corte_id, fila) apunta a la fila original en raw_movimientos
+CREATE TABLE IF NOT EXISTS stg_movimientos (
+    corte_id                 INTEGER NOT NULL,
+    fila                     BIGINT  NOT NULL,
+    id_cliente               VARCHAR,
+    fecha                    DATE,
+    producto                 VARCHAR,
+    tipo                     VARCHAR,
+    fondo                    VARCHAR,
+    monto                    DECIMAL(18, 2),
+    descripcion              VARCHAR,
+    entidad                  VARCHAR,
+    alerta_fecha_invalida    BOOLEAN,
+    alerta_tipo_desconocido  BOOLEAN,
+    alerta_fondo_desconocido BOOLEAN,
+    alerta_monto_nulo        BOOLEAN,
+    alerta_monto_negativo    BOOLEAN,
+    alerta_monto_cero        BOOLEAN,
+    alerta_descripcion_nula  BOOLEAN,
+    alerta_entidad_nula      BOOLEAN,
+    PRIMARY KEY (corte_id, fila)
+);

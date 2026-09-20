@@ -14,8 +14,8 @@ RUTA_RAW = RAIZ / "data" / "raw"
 RUTA_DB = RAIZ / "data" / "output" / "movimientos.duckdb"
 RUTA_SQL = RAIZ / "src" / "sql"
 
-# Nombre esperado de los archivos: movimientos_dia_T.parquet, movimientos_dia_T1.parquet,
-# movimientos_dia_T2.parquet... El número después de la T indica el orden del corte
+# Nombre esperado de los archivos, movimientos_dia_T.parquet, movimientos_dia_T1.parquet,
+# movimientos_dia_T2.parquet... el número después de la T indica el orden del corte
 PATRON_ARCHIVO = re.compile(r"^movimientos_dia_T(\d*)\.parquet$")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -26,7 +26,7 @@ def leer_sql(nombre):
     return (RUTA_SQL / nombre).read_text(encoding="utf-8")
 
 def descubrir_cortes():
-    """Busca los parquet en data/raw y los devuelve ordenados como (corte_id, archivo)."""
+    """Busca los parquet en data/raw y los devuelve ordenados como (corte_id, archivo)"""
     cortes = []
     for ruta in RUTA_RAW.glob("*.parquet"):
         coincidencia = PATRON_ARCHIVO.match(ruta.name)
@@ -75,6 +75,16 @@ def corte_ya_procesado(con, corte_id, hash_archivo):
     return True
 
 
+def validar_conteo_staging(con, corte_id, filas_raw):
+    """La limpieza no debe perder ni duplicar filas"""
+    filas_stg = con.execute(
+        "SELECT COUNT(*) FROM stg_movimientos WHERE corte_id = ?", [corte_id]
+    ).fetchone()[0]
+    if filas_stg != filas_raw:
+        raise ValueError(
+            f"Corte {corte_id}: raw tiene {filas_raw} filas y staging {filas_stg}."
+        )
+
 def procesar_corte(con, corte_id, archivo):
     ruta = RUTA_RAW / archivo
     hash_archivo = calcular_hash(ruta)
@@ -93,6 +103,9 @@ def procesar_corte(con, corte_id, archivo):
         filas = con.execute(
             "SELECT COUNT(*) FROM raw_movimientos WHERE corte_id = ?", [corte_id]
         ).fetchone()[0]
+
+        con.execute(leer_sql("03_staging.sql"), {"corte_id": corte_id})
+        validar_conteo_staging(con, corte_id, filas)
 
         con.execute(
             "INSERT INTO control_cortes VALUES (?, ?, ?, ?, ?)",
