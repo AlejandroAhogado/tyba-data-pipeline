@@ -1,0 +1,4 @@
+Name: duckdb
+Version: 1.5.5
+Name: pytest
+Version: 9.1.1
