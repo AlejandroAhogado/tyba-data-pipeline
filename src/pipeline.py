@@ -3,6 +3,7 @@ Pipeline para procesar los cortes diarios en orden y consolidarlos consolida en 
 """
 import hashlib
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -13,11 +14,9 @@ RUTA_RAW = RAIZ / "data" / "raw"
 RUTA_DB = RAIZ / "data" / "output" / "movimientos.duckdb"
 RUTA_SQL = RAIZ / "src" / "sql"
 
-# Orden de procesamiento de los cortes, afecta el orden porque se compara contra el anterior
-CORTES = [
-    (1, "movimientos_dia_T.parquet"),
-    (2, "movimientos_dia_T1.parquet"),
-]
+# Nombre esperado de los archivos: movimientos_dia_T.parquet, movimientos_dia_T1.parquet,
+# movimientos_dia_T2.parquet... El número después de la T indica el orden del corte
+PATRON_ARCHIVO = re.compile(r"^movimientos_dia_T(\d*)\.parquet$")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("pipeline")
@@ -25,6 +24,29 @@ log = logging.getLogger("pipeline")
 
 def leer_sql(nombre):
     return (RUTA_SQL / nombre).read_text(encoding="utf-8")
+
+def descubrir_cortes():
+    """Busca los parquet en data/raw y los devuelve ordenados como (corte_id, archivo)."""
+    cortes = []
+    for ruta in RUTA_RAW.glob("*.parquet"):
+        coincidencia = PATRON_ARCHIVO.match(ruta.name)
+        if coincidencia is None:
+            log.warning("Archivo ignorado, el nombre no sigue el patrón: %s", ruta.name)
+            continue
+        numero = coincidencia.group(1)
+        corte_id = int(numero) if numero else 0  # "T" sin número es el corte 0
+        cortes.append((corte_id, ruta.name))
+    return sorted(cortes)
+
+
+def validar_orden(con, corte_id):
+    """Un corte nuevo no puede ser anterior al último procesado."""
+    ultimo = con.execute("SELECT MAX(corte_id) FROM control_cortes").fetchone()[0]
+    if ultimo is not None and corte_id < ultimo:
+        raise ValueError(
+            f"El corte {corte_id} llegó después del corte {ultimo}. "
+            "Procesarlo rompería el orden historico"
+        )
 
 
 def calcular_hash(ruta):
@@ -61,6 +83,7 @@ def procesar_corte(con, corte_id, archivo):
         log.info("Corte %s (%s) ya procesado, se omite", corte_id, archivo)
         return
 
+    validar_orden(con, corte_id)
     log.info("Procesando corte %s (%s)", corte_id, archivo)
 
     # Todo el corte se procesa en una transacción, o queda completo o no queda nada.
@@ -88,7 +111,11 @@ def main():
     con = duckdb.connect(str(RUTA_DB))
     con.execute(leer_sql("01_esquema.sql"))
 
-    for corte_id, archivo in CORTES:
+    cortes = descubrir_cortes()
+    if not cortes:
+        log.warning("No se encontraron archivos para procesar en %s", RUTA_RAW)
+
+    for corte_id, archivo in cortes:
         procesar_corte(con, corte_id, archivo)
 
     con.close()
