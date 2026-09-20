@@ -100,3 +100,31 @@ for corte, ruta in ARCHIVOS.items():
         SELECT COUNT(*) - (SELECT COUNT(*) FROM (SELECT DISTINCT * FROM mov)) AS duplicadas
         FROM mov
     """).show()
+
+    print("\n-- id_cliente identifica una transacción? (filas vs valores distintos)")
+    con.sql("""
+        SELECT COUNT(*)                   AS filas,
+               COUNT(DISTINCT id_cliente) AS valores_distintos,
+               COUNT(*) = COUNT(DISTINCT id_cliente) AS es_unico
+        FROM mov
+    """).show()
+
+    print("\n-- Movimientos por cliente")
+    con.sql("""
+        SELECT MIN(movimientos)           AS minimo,
+               ROUND(AVG(movimientos), 1) AS promedio,
+               MAX(movimientos)           AS maximo
+        FROM (
+            SELECT id_cliente, COUNT(*) AS movimientos
+            FROM mov
+            GROUP BY id_cliente
+        )
+    """).show()
+
+    print("\n-- Ejemplo: todos los movimientos de un mismo cliente")
+    con.sql("""
+        SELECT *
+        FROM mov
+        WHERE id_cliente = (SELECT id_cliente FROM mov LIMIT 1)
+        ORDER BY date
+    """).show()
