@@ -72,8 +72,7 @@ suya, con `corte_desde`, `corte_hasta` y `vigente`. Una corrección cierra la ve
 anterior y abre una nueva, en este caso una eliminación solo cierra. De esta manera se garantiza que 
 nunca se borre ni se sobrescribe contenido, así que se puede reconstruir el estado de cualquier corte.
 
-Durante el desarrollo del caso se evaluó guatdar cada corte completo como historia, sin embargo, 
-se descartó, ya que duplicaría cada día las decenas de miles de filas que no cambian.
+Durante el desarrollo, se definió que los cortes completos deben conservarse en raw y staging para auditoría, sin embargo, SCD2 evita repetir en la capa de consulta las versiones que no cambiaron.
 
 ### Calidad de datos
 
@@ -108,8 +107,8 @@ volúmenes mayores que la memoria disponible y no requiere un servidor, lo que p
   campo.
 - El hash de archivo se calcula por bloques de 1 MB.
 
-Con volúmenes de millones de filas diarias, el siguiente paso sería particionar por fecha
-de movimiento y comparar solo las particiones afectadas.
+Con volúmenes de millones de filas diarias, si se contara con metadatos del origen que indiquen 
+qué fechas cambiaron, se podría comparar solo esas particiones.
 
 ### Robustez
 
@@ -136,7 +135,7 @@ la idempotencia y el rechazo de cortes fuera de orden.
 
 ## Resultados con los datos entregados
 
-| Corte | Filas | Sin cambio | Corregidos | Nuevos | Eliminados |
+| Corte | Filas | Sin cambio | Correcciones Inferidas | Nuevos | Eliminados |
 |---|---|---|---|---|---|
 | T | 50.000 | 0 | 0 | 50.000 | 0 |
 | T+1 | 49.000 | 35.159 | 3.842 | 9.999 | 10.999 |

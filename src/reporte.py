@@ -48,8 +48,8 @@ SECCIONES = [
     ),
     (
         "Montos negativos según tipo de movimiento",
-        "Todos los montos negativos están en movimientos de entrada. No se corrigen "
-        "porque no se sabe si son reversos, ajustes o errores de origen.",
+        "Todos los montos negativos están en movimientos de entrada. Distribución del signo del monto por tipo de movimiento "
+        "los montos se conservan como llegaron",
         """SELECT tipo,
                   COUNT(*) FILTER (monto < 0) AS negativos,
                   COUNT(*) FILTER (monto > 0) AS positivos,
@@ -78,7 +78,7 @@ SECCIONES = [
     ),
     (
         "Concentración por entidad",
-        "La entidad falta en una de cada seis filas, así que el reparto está incompleto.",
+        "La entidad puede venir vacía, esas filas se agrupan aparte",
         """SELECT COALESCE(entidad, 'Sin entidad') AS entidad,
                   COUNT(*) AS movimientos,
                   ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) AS porcentaje

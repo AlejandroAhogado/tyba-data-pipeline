@@ -86,14 +86,37 @@ def validar_conteo_staging(con, corte_id, filas_raw):
         )
 
 
+CAMPOS_MOVIMIENTO = """id_cliente, fecha, producto, tipo, fondo,
+                        monto, descripcion, entidad"""
+
+
 def validar_historico(con, corte_id, filas_corte):
-    """Después de aplicar el corte, lo vigente debe ser exactamente el corte recibido"""
+    """Lo vigente debe ser exactamente el corte recibido: mismas filas y mismo contenido"""
     vigentes = con.execute(
         "SELECT COUNT(*) FROM movimientos_historico WHERE vigente"
     ).fetchone()[0]
     if vigentes != filas_corte:
         raise ValueError(
             f"Corte {corte_id}: llegaron {filas_corte} filas pero quedaron {vigentes} vigentes."
+        )
+
+    # EXCEPT ALL resta conjuntos respetando repetidos, si algo sobra en cualquiera
+    # de los dos sentidos, el contenido no coincide aunque el conteo sí.
+    faltan, sobran = con.execute(
+        f"""WITH corte AS (
+                SELECT {CAMPOS_MOVIMIENTO} FROM stg_movimientos WHERE corte_id = ?
+            ),
+            vigente AS (
+                SELECT {CAMPOS_MOVIMIENTO} FROM movimientos_historico WHERE vigente
+            )
+            SELECT (SELECT COUNT(*) FROM (SELECT * FROM corte   EXCEPT ALL SELECT * FROM vigente)),
+                   (SELECT COUNT(*) FROM (SELECT * FROM vigente EXCEPT ALL SELECT * FROM corte))""",
+        [corte_id],
+    ).fetchone()
+    if faltan or sobran:
+        raise ValueError(
+            f"Corte {corte_id}: el contenido vigente no coincide con el corte "
+            f"({faltan} filas del corte sin reflejar, {sobran} vigentes de más)."
         )
 
     resumen = con.execute(

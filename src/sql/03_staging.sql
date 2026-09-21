@@ -66,27 +66,18 @@ SELECT
     descripcion IS NULL                    AS alerta_descripcion_nula,
     entidad IS NULL                        AS alerta_entidad_nula,
 
-    -- Huellas para comparar cortes. Se calculan una sola vez, aquí
-    -- hash_contenido: la fila completa. hash_llave: solo los campos que
-    -- identifican el movimiento (sin monto ni descripción, que son los que se corrigen)
-    -- '<null>' marca los vacíos para que dos filas distintas no den la misma huella.
-    md5(concat_ws('|',
-        COALESCE(id_cliente, '<null>'),
-        COALESCE(fecha::VARCHAR, '<null>'),
-        COALESCE(producto, '<null>'),
-        COALESCE(tipo, '<null>'),
-        COALESCE(fondo, '<null>'),
-        COALESCE(monto::VARCHAR, '<null>'),
-        COALESCE(descripcion, '<null>'),
-        COALESCE(entidad, '<null>')
-    )) AS hash_contenido,
+    -- Huellas para comparar cortes, calculadas una sola vez aquí
+    -- hash_contenido: la fila completa. hash_llave: solo los campos que identifican
+    -- el movimiento (sin monto ni descripción, que son los que se corrigen).
+    -- to_json escribe los nulos y los separadores sin ambigüedad, así que dos filas
+    -- distintas nunca producen el mismo texto.
+    md5(to_json({
+        'id_cliente': id_cliente, 'fecha': fecha, 'producto': producto, 'tipo': tipo,
+        'fondo': fondo, 'monto': monto, 'descripcion': descripcion, 'entidad': entidad
+    })) AS hash_contenido,
 
-    md5(concat_ws('|',
-        COALESCE(id_cliente, '<null>'),
-        COALESCE(fecha::VARCHAR, '<null>'),
-        COALESCE(producto, '<null>'),
-        COALESCE(tipo, '<null>'),
-        COALESCE(fondo, '<null>'),
-        COALESCE(entidad, '<null>')
-    )) AS hash_llave
+    md5(to_json({
+        'id_cliente': id_cliente, 'fecha': fecha, 'producto': producto, 'tipo': tipo,
+        'fondo': fondo, 'entidad': entidad
+    })) AS hash_llave
 FROM limpio;

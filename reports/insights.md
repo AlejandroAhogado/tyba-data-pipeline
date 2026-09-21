@@ -1,6 +1,6 @@
 # Insights de movimientos financieros
 
-Generado el 2026-09-21 03:56.
+Generado el 2026-09-21 00:39.
 
 ## Cortes procesados
 
@@ -29,7 +29,7 @@ Ninguna fila se descarta ni se corrige, los problemas se marcan y se conservan.
 
 ## Montos negativos según tipo de movimiento
 
-Todos los montos negativos están en movimientos de entrada. No se corrigen porque no se sabe si son reversos, ajustes o errores de origen.
+Todos los montos negativos están en movimientos de entrada. Distribución del signo del monto por tipo de movimiento los montos se conservan como llegaron
 
 | tipo | negativos | positivos | en_cero |
 |---|---|---|---|
@@ -65,7 +65,7 @@ Entradas y salidas van por separado y con su signo original, sin una convención
 
 ## Concentración por entidad
 
-La entidad falta en una de cada seis filas, así que el reparto está incompleto.
+La entidad puede venir vacía, esas filas se agrupan aparte
 
 | entidad | movimientos | porcentaje |
 |---|---|---|

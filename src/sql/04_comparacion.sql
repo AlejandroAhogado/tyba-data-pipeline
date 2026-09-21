@@ -11,7 +11,7 @@ WITH actual AS (
     WHERE corte_id = $corte_id
 ),
 vigente AS (
-    SELECT movimiento_id, hash_contenido, hash_llave,
+    SELECT movimiento_id, version, hash_contenido, hash_llave,
            ROW_NUMBER() OVER (PARTITION BY hash_contenido ORDER BY movimiento_id) AS ocurrencia
     FROM movimientos_historico
     WHERE vigente
@@ -19,7 +19,7 @@ vigente AS (
 
 -- Etapa A: mismo contenido exacto.
 iguales AS (
-    SELECT v.movimiento_id, a.fila
+    SELECT v.movimiento_id, v.version, a.fila
     FROM actual a
     JOIN vigente v USING (hash_contenido, ocurrencia)
 ),
@@ -48,24 +48,24 @@ llave_uno_a_uno AS (
     SELECT hash_llave FROM conteo_llave WHERE n_actual = 1 AND n_vigente = 1
 )
 
-SELECT movimiento_id, fila, 'SIN_CAMBIO' AS resultado
+SELECT movimiento_id, version AS version_anterior, fila, 'SIN_CAMBIO' AS resultado
 FROM iguales
 
 UNION ALL
-SELECT v.movimiento_id, a.fila, 'CORREGIDO'
+SELECT v.movimiento_id, v.version, a.fila, 'CORREGIDO'
 FROM pendiente_actual a
 JOIN pendiente_vigente v USING (hash_llave)
 WHERE a.hash_llave IN (SELECT hash_llave FROM llave_uno_a_uno)
 
 UNION ALL
-SELECT NULL, a.fila,
+SELECT NULL, NULL, a.fila,
        CASE WHEN c.n_vigente = 0 THEN 'NUEVO' ELSE 'NUEVO_AMBIGUO' END
 FROM pendiente_actual a
 JOIN conteo_llave c USING (hash_llave)
 WHERE a.hash_llave NOT IN (SELECT hash_llave FROM llave_uno_a_uno)
 
 UNION ALL
-SELECT v.movimiento_id, NULL,
+SELECT v.movimiento_id, v.version, NULL,
        CASE WHEN c.n_actual = 0 THEN 'ELIMINADO' ELSE 'ELIMINADO_AMBIGUO' END
 FROM pendiente_vigente v
 JOIN conteo_llave c USING (hash_llave)

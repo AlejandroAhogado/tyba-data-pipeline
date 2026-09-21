@@ -4,17 +4,9 @@
 INSERT INTO movimientos_historico
 
 -- Versión más alta que ya tiene cada movimiento corregido.
-WITH version_previa AS (
-    SELECT h.movimiento_id, MAX(h.version) AS version
-    FROM movimientos_historico h
-    JOIN comparacion c USING (movimiento_id)
-    WHERE c.resultado = 'CORREGIDO'
-    GROUP BY h.movimiento_id
-),
-correcciones AS (
-    SELECT c.fila, c.resultado, c.movimiento_id, v.version + 1 AS version
+WITH correcciones AS (
+    SELECT c.fila, c.resultado, c.movimiento_id, c.version_anterior + 1 AS version
     FROM comparacion c
-    JOIN version_previa v USING (movimiento_id)
     WHERE c.resultado = 'CORREGIDO'
 ),
 -- Los movimientos nuevos reciben ids consecutivos a partir del último usado
