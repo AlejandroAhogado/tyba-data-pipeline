@@ -1,6 +1,6 @@
 # Pipeline de movimientos financieros
 
-De acuerdo al enunciaro se desarrolló un pipeline que ingiere los cortes diarios de movimientos financieros y los consolida en una
+De acuerdo al enunciado se desarrolló un pipeline que ingiere los cortes diarios de movimientos financieros y los consolida en una
 base DuckDB consultable, conservando la historia de cada movimiento entre cortes.
 
 ## Cómo ejecutarlo
