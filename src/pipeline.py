@@ -154,6 +154,7 @@ def main(ruta_raw=RUTA_RAW, ruta_db=RUTA_DB):
     ruta_db.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(ruta_db))
     con.execute(leer_sql("01_esquema.sql"))
+    con.execute(leer_sql("08_vistas.sql"))
 
     cortes = descubrir_cortes(ruta_raw)
     if not cortes:
