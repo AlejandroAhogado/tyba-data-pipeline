@@ -10,4 +10,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
 
-CMD ["python", "src/pipeline.py"]
+CMD ["sh", "-c", "python src/pipeline.py && python src/reporte.py"]
