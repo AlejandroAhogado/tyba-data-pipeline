@@ -25,17 +25,17 @@ log = logging.getLogger("pipeline")
 def leer_sql(nombre):
     return (RUTA_SQL / nombre).read_text(encoding="utf-8")
 
-def descubrir_cortes():
-    """Busca los parquet en data/raw y los devuelve ordenados como (corte_id, archivo)"""
+def descubrir_cortes(ruta_raw):
+    """Busca los parquet en la carpeta y los devuelve ordenados como (corte_id, ruta)."""
     cortes = []
-    for ruta in RUTA_RAW.glob("*.parquet"):
+    for ruta in ruta_raw.glob("*.parquet"):
         coincidencia = PATRON_ARCHIVO.match(ruta.name)
         if coincidencia is None:
             log.warning("Archivo ignorado, el nombre no sigue el patrón: %s", ruta.name)
             continue
         numero = coincidencia.group(1)
         corte_id = int(numero) if numero else 0  # "T" sin número es el corte 0
-        cortes.append((corte_id, ruta.name))
+        cortes.append((corte_id, ruta))
     return sorted(cortes)
 
 
@@ -111,16 +111,15 @@ def validar_historico(con, corte_id, filas_corte):
 
     
 
-def procesar_corte(con, corte_id, archivo):
-    ruta = RUTA_RAW / archivo
+def procesar_corte(con, corte_id, ruta):
     hash_archivo = calcular_hash(ruta)
 
     if corte_ya_procesado(con, corte_id, hash_archivo):
-        log.info("Corte %s (%s) ya procesado, se omite", corte_id, archivo)
+        log.info("Corte %s (%s) ya procesado, se omite", corte_id, ruta.name)
         return
 
     validar_orden(con, corte_id)
-    log.info("Procesando corte %s (%s)", corte_id, archivo)
+    log.info("Procesando corte %s (%s)", corte_id, ruta.name)
 
     # Todo el corte se procesa en una transacción, o queda completo o no queda nada
     con.begin()
@@ -141,7 +140,7 @@ def procesar_corte(con, corte_id, archivo):
 
         con.execute(
             "INSERT INTO control_cortes VALUES (?, ?, ?, ?, ?)",
-            [corte_id, archivo, hash_archivo, filas, datetime.now()],
+            [corte_id, ruta.name, hash_archivo, filas, datetime.now()],
         )
         con.commit()
     except Exception:
@@ -151,17 +150,17 @@ def procesar_corte(con, corte_id, archivo):
     log.info("Corte %s cargado: %s filas", corte_id, filas)
 
 
-def main():
-    RUTA_DB.parent.mkdir(parents=True, exist_ok=True)
-    con = duckdb.connect(str(RUTA_DB))
+def main(ruta_raw=RUTA_RAW, ruta_db=RUTA_DB):
+    ruta_db.parent.mkdir(parents=True, exist_ok=True)
+    con = duckdb.connect(str(ruta_db))
     con.execute(leer_sql("01_esquema.sql"))
 
-    cortes = descubrir_cortes()
+    cortes = descubrir_cortes(ruta_raw)
     if not cortes:
-        log.warning("No se encontraron archivos para procesar en %s", RUTA_RAW)
+        log.warning("No se encontraron archivos para procesar en %s", ruta_raw)
 
-    for corte_id, archivo in cortes:
-        procesar_corte(con, corte_id, archivo)
+    for corte_id, ruta in cortes:
+        procesar_corte(con, corte_id, ruta)
 
     con.close()
     log.info("Pipeline terminado")
