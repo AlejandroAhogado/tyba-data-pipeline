@@ -64,5 +64,29 @@ SELECT
     COALESCE(monto < 0, FALSE)             AS alerta_monto_negativo,
     COALESCE(monto = 0, FALSE)             AS alerta_monto_cero,
     descripcion IS NULL                    AS alerta_descripcion_nula,
-    entidad IS NULL                        AS alerta_entidad_nula
+    entidad IS NULL                        AS alerta_entidad_nula,
+
+    -- Huellas para comparar cortes. Se calculan una sola vez, aquí
+    -- hash_contenido: la fila completa. hash_llave: solo los campos que
+    -- identifican el movimiento (sin monto ni descripción, que son los que se corrigen)
+    -- '<null>' marca los vacíos para que dos filas distintas no den la misma huella.
+    md5(concat_ws('|',
+        COALESCE(id_cliente, '<null>'),
+        COALESCE(fecha::VARCHAR, '<null>'),
+        COALESCE(producto, '<null>'),
+        COALESCE(tipo, '<null>'),
+        COALESCE(fondo, '<null>'),
+        COALESCE(monto::VARCHAR, '<null>'),
+        COALESCE(descripcion, '<null>'),
+        COALESCE(entidad, '<null>')
+    )) AS hash_contenido,
+
+    md5(concat_ws('|',
+        COALESCE(id_cliente, '<null>'),
+        COALESCE(fecha::VARCHAR, '<null>'),
+        COALESCE(producto, '<null>'),
+        COALESCE(tipo, '<null>'),
+        COALESCE(fondo, '<null>'),
+        COALESCE(entidad, '<null>')
+    )) AS hash_llave
 FROM limpio;

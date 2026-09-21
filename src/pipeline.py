@@ -85,6 +85,32 @@ def validar_conteo_staging(con, corte_id, filas_raw):
             f"Corte {corte_id}: raw tiene {filas_raw} filas y staging {filas_stg}."
         )
 
+
+def validar_historico(con, corte_id, filas_corte):
+    """Después de aplicar el corte, lo vigente debe ser exactamente el corte recibido"""
+    vigentes = con.execute(
+        "SELECT COUNT(*) FROM movimientos_historico WHERE vigente"
+    ).fetchone()[0]
+    if vigentes != filas_corte:
+        raise ValueError(
+            f"Corte {corte_id}: llegaron {filas_corte} filas pero quedaron {vigentes} vigentes."
+        )
+
+    resumen = con.execute(
+        """SELECT sin_cambio, corregidos, nuevos, eliminados,
+                  nuevos_ambiguos, eliminados_ambiguos
+           FROM resumen_cortes WHERE corte_id = ?""",
+        [corte_id],
+    ).fetchone()
+    log.info(
+        "Corte %s: %s sin cambio, %s corregidos, %s nuevos, %s eliminados "
+        "(%s nuevos y %s eliminados ambiguos)",
+        corte_id, *resumen,
+    )
+
+
+    
+
 def procesar_corte(con, corte_id, archivo):
     ruta = RUTA_RAW / archivo
     hash_archivo = calcular_hash(ruta)
@@ -96,7 +122,7 @@ def procesar_corte(con, corte_id, archivo):
     validar_orden(con, corte_id)
     log.info("Procesando corte %s (%s)", corte_id, archivo)
 
-    # Todo el corte se procesa en una transacción, o queda completo o no queda nada.
+    # Todo el corte se procesa en una transacción, o queda completo o no queda nada
     con.begin()
     try:
         con.execute(leer_sql("02_cargar_raw.sql"), {"corte_id": corte_id, "ruta": str(ruta)})
@@ -106,6 +132,12 @@ def procesar_corte(con, corte_id, archivo):
 
         con.execute(leer_sql("03_staging.sql"), {"corte_id": corte_id})
         validar_conteo_staging(con, corte_id, filas)
+
+        con.execute(leer_sql("04_comparacion.sql"), {"corte_id": corte_id})
+        con.execute(leer_sql("05_cerrar_versiones.sql"), {"corte_id": corte_id})
+        con.execute(leer_sql("06_abrir_versiones.sql"), {"corte_id": corte_id})
+        con.execute(leer_sql("07_resumen_corte.sql"), {"corte_id": corte_id})
+        validar_historico(con, corte_id, filas)
 
         con.execute(
             "INSERT INTO control_cortes VALUES (?, ?, ?, ?, ?)",
