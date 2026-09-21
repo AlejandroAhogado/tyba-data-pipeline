@@ -160,3 +160,8 @@ Los hallazgos de negocio y de calidad están en `reports/insights.md`.
 - Migraciones de esquema, para poder cambiar tablas sin recrear la base.
 - Benchmark con millones de filas por corte y particionado por fecha.
 - Alertas sobre variaciones anómalas de volumen entre cortes.
+
+## IA
+El diseño, la arquitectura y las decisiones sobre el manejo de cada tipo de dato los
+definí antes de escribir código. Dado que estoy en otros proyectos en paralelo, me apoyé
+en IA para agilizar la implementación.
